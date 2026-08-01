@@ -103,6 +103,18 @@ test("playlist sources reject control characters", async (context) => {
   );
 });
 
+test("finite remote files can loop but HLS sources are left open-ended", async () => {
+  const mp4 = await resolveSourcePlan({ singleSource: "https://example.com/short.mp4" });
+  const hls = await resolveSourcePlan({
+    singleSource: "https://example.com/live/stream.m3u8?token=secret",
+  });
+
+  assert.equal(mp4.kind, "remote");
+  assert.equal(mp4.loopWithFfmpeg, true);
+  assert.equal(hls.kind, "remote");
+  assert.equal(hls.loopWithFfmpeg, false);
+});
+
 function writeConfig(root: string, value: unknown): string {
   const path = join(root, "source-config.json");
   writeFileSync(path, JSON.stringify(value));

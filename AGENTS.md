@@ -44,7 +44,8 @@ unofficial Discord user session, so preserve the caution notice at the top of
 - Increment `PLAYLIST_CACHE_VERSION` whenever cache container, codecs, filters,
   timestamp handling, or compatibility rules change.
 - Keep `-stream_loop -1` as an input option after concat options and before the
-  input. Do not move it to output flags.
+  input. It applies to local/finite HTTP media, but not HLS manifests. Do not
+  move it to output flags.
 - Do not enable FFmpeg `nobuffer/analyzeduration=0` for local playlists. Those
   options are reserved for remote/live inputs.
 - A media regression test must cross several complete seams/loops using

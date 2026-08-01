@@ -63,6 +63,15 @@ function isRemoteSource(source: string): boolean {
   return /^https?:\/\//i.test(source);
 }
 
+function isHlsSource(source: string): boolean {
+  if (!isRemoteSource(source)) return false;
+  try {
+    return new URL(source).pathname.toLowerCase().endsWith(".m3u8");
+  } catch {
+    return false;
+  }
+}
+
 function assertSafeSourceText(source: string): void {
   if (/[\u0000-\u001f\u007f]/u.test(source)) {
     throw new Error("Media sources cannot contain control characters");
@@ -362,13 +371,17 @@ export async function resolveSourcePlan(
   if (shouldShuffle) sources = shuffle(sources);
 
   if (sources.length === 1) {
+    const remote = isRemoteSource(sources[0]!);
     return {
-      kind: isRemoteSource(sources[0]!) ? "remote" : "local",
+      kind: remote ? "remote" : "local",
       input: sources[0]!,
       inputOptions: [],
-      loopWithFfmpeg: !isRemoteSource(sources[0]!),
+      // Finite remote files can be shorter than Discord's RTC startup. Looping
+      // them at the input keeps FFmpeg alive; HLS/live manifests stay open on
+      // their own and must not be rewound with -stream_loop.
+      loopWithFfmpeg: !remote || !isHlsSource(sources[0]!),
       sourceCount: 1,
-      description: isRemoteSource(sources[0]!) ? "remote source" : basename(sources[0]!),
+      description: remote ? "remote source" : basename(sources[0]!),
       quality: fileConfig?.quality,
       dispose() {},
     };

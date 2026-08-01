@@ -72,8 +72,9 @@ STREAM_QUALITY=720p
 
 Never commit `.env` or the user token.
 
-Quality can be `480p`, `720p`, or `1080p`. The default is `720p`. Local files
-loop automatically; HTTP/live sources use their normal reconnect behavior.
+Quality can be `480p`, `720p`, or `1080p`. The default is `720p`. With
+`STREAM_LOOP=true`, local files and finite HTTP media such as MP4 loop inside
+FFmpeg. HLS/live sources stay open and use their normal reconnect behavior.
 
 ### 6. Start SelfStream
 

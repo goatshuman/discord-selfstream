@@ -1,0 +1,9 @@
+{
+  "sources": [
+    "./media/01-intro.mp4",
+    "./media/02-main.mp4",
+    "./media/03-outro.mp4"
+  ],
+  "shuffle": false,
+  "quality": "720p"
+}

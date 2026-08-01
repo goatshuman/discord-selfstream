@@ -21,15 +21,41 @@ and voice channel with either a single source or a looping local playlist. See
 
 ## Local setup
 
+### 1. Clone the repository
+
 ```sh
-npm install
-copy .env.example .env
-npm run dev
+git clone https://github.com/baoayano2/discord-selfstream.git
 ```
 
-Never commit `.env` or the user token.
+### 2. Open the project directory
 
-The normal `.env` needs the account/channel values and one source mode:
+```sh
+cd discord-selfstream
+```
+
+### 3. Install dependencies
+
+```sh
+npm install
+```
+
+### 4. Create the environment file
+
+Windows PowerShell or Command Prompt:
+
+```powershell
+copy .env.example .env
+```
+
+Linux or macOS:
+
+```sh
+cp .env.example .env
+```
+
+### 5. Configure Discord and the media source
+
+Open `.env` and fill in the account/channel values and exactly one source mode:
 
 ```dotenv
 DISCORD_TOKEN=
@@ -44,8 +70,16 @@ STREAM_SOURCE=E:/path/to/video.mp4
 STREAM_QUALITY=720p
 ```
 
+Never commit `.env` or the user token.
+
 Quality can be `480p`, `720p`, or `1080p`. The default is `720p`. Local files
 loop automatically; HTTP/live sources use their normal reconnect behavior.
+
+### 6. Start SelfStream
+
+```sh
+npm run dev
+```
 
 ### Multiple sources
 

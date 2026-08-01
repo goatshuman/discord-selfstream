@@ -22,6 +22,12 @@ type State =
   | "stopping"
   | "stopped";
 
+type RawPacket = VoiceStatePacket & {
+  d?: VoiceStatePacket["d"] & {
+    endpoint?: string;
+  };
+};
+
 export class StreamController {
   private readonly client = new Client();
   private readonly streamer = new Streamer(this.client);
@@ -37,6 +43,8 @@ export class StreamController {
   private activeStreamStartedAt?: number;
   private gatewayReconnectTimer?: NodeJS.Timeout;
   private cleaningUp = false;
+  private voiceEndpoint?: string;
+  private readonly observedVoiceSockets = new WeakSet<WebSocket>();
 
   constructor(private readonly config: AppConfig) {
     this.client.on("shardDisconnect", (event, shardId) => {
@@ -53,7 +61,7 @@ export class StreamController {
       logger.error(this.fatalError.message);
       this.stopController.abort(this.fatalError);
     });
-    this.client.on("raw", (packet: VoiceStatePacket) => this.handleVoiceStateUpdate(packet));
+    this.client.on("raw", (packet: RawPacket) => this.handleRawPacket(packet));
   }
 
   async run(): Promise<void> {
@@ -295,6 +303,71 @@ export class StreamController {
       reason: result.restartReason,
     });
     this.activeAttemptController?.abort(new Error(result.restartReason));
+  }
+
+  private handleRawPacket(packet: RawPacket): void {
+    if (
+      packet.t === "VOICE_SERVER_UPDATE" &&
+      packet.d?.guild_id === this.config.discord.guildId &&
+      typeof packet.d.endpoint === "string"
+    ) {
+      // The voice token shares this event and must never be logged. The host is
+      // sufficient for DNS/TLS/firewall diagnosis.
+      this.voiceEndpoint = this.safeVoiceHostname(packet.d.endpoint);
+      logger.info("Discord voice server assigned", { endpoint: this.voiceEndpoint });
+    }
+
+    this.handleVoiceStateUpdate(packet);
+    // Streamer's raw listener is registered first and may create the socket
+    // synchronously. A microtask also covers either Gateway event ordering.
+    queueMicrotask(() => this.attachVoiceSocketDiagnostics());
+  }
+
+  private attachVoiceSocketDiagnostics(): void {
+    const socket = this.streamer.voiceConnection?.ws;
+    if (!socket || this.observedVoiceSockets.has(socket)) return;
+    this.observedVoiceSockets.add(socket);
+
+    socket.addEventListener("error", (event) => {
+      const details = this.transportErrorFields(event);
+      logger.error("Discord voice WebSocket error", {
+        endpoint: this.voiceEndpoint,
+        ...details,
+      });
+    });
+    socket.addEventListener("close", (event) => {
+      logger.warn("Discord voice WebSocket closed", {
+        endpoint: this.voiceEndpoint,
+        code: event.code,
+        wasClean: event.wasClean,
+      });
+    });
+  }
+
+  private safeVoiceHostname(endpoint: string): string {
+    try {
+      return new URL(`wss://${endpoint}`).hostname;
+    } catch {
+      return "invalid-voice-endpoint";
+    }
+  }
+
+  private transportErrorFields(event: Event): Record<string, unknown> {
+    const errorEvent = event as ErrorEvent;
+    const nested = errorEvent.error;
+    const nestedRecord = nested && typeof nested === "object"
+      ? nested as Record<string, unknown>
+      : undefined;
+    const cause = nestedRecord?.cause && typeof nestedRecord.cause === "object"
+      ? nestedRecord.cause as Record<string, unknown>
+      : undefined;
+    return {
+      error: nested instanceof Error
+        ? nested.message
+        : errorEvent.message || "Voice WebSocket connection failed",
+      errorName: nested instanceof Error ? nested.name : undefined,
+      code: nestedRecord?.code ?? cause?.code,
+    };
   }
 
 

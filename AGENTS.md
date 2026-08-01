@@ -6,7 +6,8 @@ unofficial Discord user session, so preserve the caution notice at the top of
 
 ## Required checks
 
-- Use Node.js 22.4+ and FFmpeg/FFprobe with H.264, Opus, and libzmq support.
+- Use Node.js 22.x (22.4+) and FFmpeg/FFprobe with H.264, Opus, and libzmq
+  support. Do not claim support for a newer Node major without voice/RTC tests.
 - Install reproducibly with `npm ci` when validating a clean checkout.
 - Run `npm run check` after code changes. It typechecks source and tests, runs
   all tests, and builds `dist`.

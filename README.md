@@ -14,7 +14,7 @@ and voice channel with either a single source or a looping local playlist. See
 
 ## Prerequisites
 
-- Node.js 22.4 or newer
+- Node.js 22.x (22.4 or newer; other major versions are not tested)
 - FFmpeg with `libzmq`, H.264, and Opus support
 - A Discord user token, guild ID, and voice channel ID
 - A local media file or direct media URL

@@ -14,6 +14,7 @@ export type AppConfig = {
     token: string;
     guildId: string;
     channelId: string;
+    viewerToken?: string;
   };
   media: {
     sourceProvider: SourceProvider;
@@ -145,6 +146,7 @@ export async function loadConfig(): Promise<AppConfig> {
   const token = required("DISCORD_TOKEN");
   const guildId = required("DISCORD_GUILD_ID");
   const channelId = required("DISCORD_CHANNEL_ID");
+  const viewerToken = process.env.VIEWER_TOKEN?.trim() || undefined;
   const firstSourcePlan = await resolveSourcePlan(sourceOptions);
   let initialSourcePlan: SourcePlan | undefined = firstSourcePlan;
   let configCompleted = false;
@@ -181,6 +183,7 @@ export async function loadConfig(): Promise<AppConfig> {
       token,
       guildId,
       channelId,
+      viewerToken,
     },
     media: {
       sourceProvider,

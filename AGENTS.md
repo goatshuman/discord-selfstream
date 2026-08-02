@@ -22,6 +22,10 @@ unofficial Discord user session, so preserve the caution notice at the top of
 - Every attempt owns an `AbortController`, `StreamEventTracker`, FFmpeg process,
   voice/stream connection, and `SourcePlan`. Abort and dispose them on every
   exit path.
+- `StreamViewer` owns the optional second Discord client and its voice/watch
+  RTC connections. Viewer retries must never restart a healthy broadcaster;
+  do not report it connected before both RTCs are ready and Media Sink Wants
+  has been sent.
 - `joinVoice()` is not cancelled by a wrapper timeout. Preserve the generation
   check that stops the exact late connection; never use a late callback to tear
   down the controller's current global connection.

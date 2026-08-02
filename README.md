@@ -9,7 +9,9 @@
 > carefully before relying on it for long-running or production use.
 
 Supervisor for a long-running Discord Go Live stream. It supports one account
-and voice channel with either a single source or a looping local playlist. See
+and voice channel with either a single source or a looping local playlist. An
+optional second account can join the channel and maintain a real RTC viewer
+session that requests the stream's media layers. See
 [docs/PLAN.md](docs/PLAN.md) for architecture and recovery policy.
 
 ## Prerequisites
@@ -71,6 +73,22 @@ STREAM_QUALITY=720p
 ```
 
 Never commit `.env` or the user token.
+
+To enable the optional viewer account, add a different user token:
+
+```dotenv
+VIEWER_TOKEN=
+```
+
+The viewer account must already be a member of the server and have permission
+to view and connect to the configured voice channel. It joins the channel
+itself, so `MOVE_MEMBERS` is not required. SelfStream sends Discord's Stream
+Watch request and establishes the separate DAVE/WebRTC stream connection; it
+sends Media Sink Wants to request the remote stream layers, but does not decode,
+render, or record received frames. Viewer health therefore confirms signaling
+and RTC connectivity, not decoded video output. Viewer login and RTC failures
+retry independently and do not restart a healthy broadcast. Never reuse
+`DISCORD_TOKEN` as `VIEWER_TOKEN`.
 
 Quality can be `480p`, `720p`, or `1080p`. The default is `720p`. With
 `STREAM_LOOP=true`, local files and finite HTTP media such as MP4 loop inside

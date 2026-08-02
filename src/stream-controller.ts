@@ -10,6 +10,7 @@ import { abortableDelay, abortReason, waitUntil, withTimeout } from "./async-uti
 import type { AppConfig } from "./config.js";
 import { errorFields, logger } from "./logger.js";
 import { StreamEventTracker } from "./stream-event-tracker.js";
+import { StreamViewer } from "./stream-viewer.js";
 import { inspectVoiceState, type VoiceStatePacket } from "./voice-watchdog.js";
 
 type State =
@@ -31,6 +32,7 @@ type RawPacket = VoiceStatePacket & {
 export class StreamController {
   private readonly client = new Client();
   private readonly streamer = new Streamer(this.client);
+  private readonly viewer?: StreamViewer;
   private readonly stopController = new AbortController();
   private state: State = "idle";
   private attempt = 0;
@@ -47,6 +49,19 @@ export class StreamController {
   private readonly observedVoiceSockets = new WeakSet<WebSocket>();
 
   constructor(private readonly config: AppConfig) {
+    if (config.discord.viewerToken) {
+      this.viewer = new StreamViewer({
+        token: config.discord.viewerToken,
+        guildId: config.discord.guildId,
+        channelId: config.discord.channelId,
+        loginTimeoutMs: config.watchdog.loginTimeoutMs,
+        voiceJoinTimeoutMs: config.watchdog.voiceJoinTimeoutMs,
+        rtcReadyTimeoutMs: config.watchdog.rtcReadyTimeoutMs,
+        rtcLossTimeoutMs: config.watchdog.rtcLossTimeoutMs,
+        watchIntervalMs: config.watchdog.runtimeWatchIntervalMs,
+        stableResetMs: config.retry.stableResetMs,
+      });
+    }
     this.client.on("shardDisconnect", (event, shardId) => {
       logger.warn("Gateway shard disconnected", { shardId, code: event.code });
       this.startGatewayReconnectDeadline();
@@ -139,6 +154,7 @@ export class StreamController {
     ]);
     let sourcePlan: Awaited<ReturnType<AppConfig["media"]["sourceProvider"]["resolve"]>> | undefined;
     let streamEvents: StreamEventTracker | undefined;
+    let viewerTask: Promise<void> | undefined;
 
     try {
       sourcePlan = await this.config.media.sourceProvider.resolve(attemptSignal);
@@ -262,6 +278,11 @@ export class StreamController {
       this.setState("streaming");
       this.activeStreamStartedAt = Date.now();
       logger.info("Discord confirmed Go Live and WebRTC is connected");
+      if (this.viewer && this.client.user) {
+        // Viewer login and RTC recovery are isolated from broadcasting: a bad
+        // second token or route must not interrupt an otherwise healthy Go Live.
+        viewerTask = this.viewer.maintainWatch(this.client.user.id, attemptSignal);
+      }
       await Promise.race([
         playback,
         streamEvents.failure,
@@ -269,6 +290,7 @@ export class StreamController {
       ]);
     } finally {
       attemptController.abort(new Error("Streaming attempt finished"));
+      await viewerTask;
       streamEvents?.dispose();
       sourcePlan?.dispose();
       this.activeVoiceSessionId = undefined;
@@ -455,6 +477,7 @@ export class StreamController {
     this.clearGatewayReconnectDeadline();
     this.safeTearDownStream();
     this.config.media.sourceProvider.dispose();
+    this.viewer?.destroy();
     this.client.destroy();
     this.setState("stopped");
     logger.info("Supervisor stopped");
@@ -509,6 +532,8 @@ export class StreamController {
       gatewayReady: this.client.isReady(),
       voiceRtcReady: voiceReady,
       streamRtcReady: streamReady,
+      viewerEnabled: Boolean(this.viewer),
+      viewerConnected: this.viewer?.connected ?? false,
     });
   }
 }

@@ -5,7 +5,8 @@
 Keep one user account connected to a configured voice channel and continuously
 publish a single video/audio source or local playlist through Discord Go Live. Recover automatically
 from media completion, FFmpeg failure, RTC loss, Gateway reconnects, and process
-restarts.
+restarts. Optionally keep a second user account connected as a DAVE/RTC viewer
+without coupling viewer failures to broadcast recovery.
 
 ## Chosen baseline
 
@@ -19,6 +20,13 @@ restarts.
 The streaming library is isolated behind `StreamController`. This gives us a
 single replacement boundary if Discord changes the protocol or the dependency
 stops being maintained.
+
+`StreamViewer` owns the optional second Gateway, voice, and watched-stream RTC
+connections. It joins with its own token, sends Gateway opcode 20 for the
+broadcaster's stream key, requests remote layers with voice opcode 15, and
+retries independently for the lifetime of each broadcast attempt. It maintains
+viewer presence and requests media delivery without decoding or persisting
+received frames.
 
 ## Runtime state machine
 

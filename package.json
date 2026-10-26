@@ -1,9 +1,10 @@
+
 {
   "name": "selfstream",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Long-running Discord Go Live stream supervisor",
+  "description": "HTTP health-check service",
   "engines": {
     "node": ">=22.4.0 <23"
   },
@@ -11,6 +12,7 @@
     "dev": "tsx src/main.ts",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/main.js",
+    "start:web": "node dist/server.js",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json",
     "test": "tsx --test tests/*.test.ts",
     "check": "npm run typecheck && npm test && npm run build"
